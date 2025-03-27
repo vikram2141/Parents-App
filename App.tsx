@@ -1,131 +1,44 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
 import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import LoginScreen from './src/Screens/LoginScreen';
+import ForgotPasswordScreen from './src/Screens/ForgotPasswordScreen';
+import OTPVerificationScreen from './src/Screens/OTPVerificationScreen';
+import CreateNewPasswordScreen from './src/Screens/CreateNewPasswordScreen';
+import HomeScreen from './src/Screens/HomeScreen';
+import ProfileScreen from './src/Screens/ProfileScreen';
+import GoalsListDetailScreen from './src/Screens/GoalsListDetailScreen';
+import ConfirmationModal from './src/Screens/ConfirmationModal';
+import GoalsListVerify from './src/Screens/GoalsListVerify';
+import DataDetailScreen from './src/Screens/DataDetailScreen';
+import GoalsListNotesScreen from './src/Screens/GoalsListNotesScreen';
+import NotificationScreen from './src/Screens/NotificationScreen';
+import CollectDataScreen from './src/Screens/CollectDataScreen';
+import InvoiceScreen from './src/Screens/InvoiceScreen';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+const Stack = createNativeStackNavigator();
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
-
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+export default function App() {
   return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
+    <NavigationContainer>
+      <Stack.Navigator>
+        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen}options={{ headerShown: false }} />
+        <Stack.Screen name="OTPVerification" component={OTPVerificationScreen}options={{ headerShown: false }} />
+        <Stack.Screen name="CreateNewPassword" component={CreateNewPasswordScreen}options={{ headerShown: false }} />
+        <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }}/> 
+        <Stack.Screen name="Profile" component={ProfileScreen}options={{ headerShown: false }} />
+        <Stack.Screen name="GoalsListDetail" component={GoalsListDetailScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="GoalsListNotes" component={GoalsListNotesScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="ConfirmationModal" component={ConfirmationModal} options={{ headerShown: false }} />
+        <Stack.Screen name="GoalsListVerify" component={GoalsListVerify} options={{ headerShown: false }} />
+        <Stack.Screen name="DataDetail" component={DataDetailScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Notification" component={NotificationScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="CollectData" component={CollectDataScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="InvoiceScreen" component={InvoiceScreen} options={{ headerShown: false }} />
+
+
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
-
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
-
-  /*
-   * To keep the template simple and small we're adding padding to prevent view
-   * from rendering under the System UI.
-   * For bigger apps the reccomendation is to use `react-native-safe-area-context`:
-   * https://github.com/AppAndFlow/react-native-safe-area-context
-   *
-   * You can read more about it here:
-   * https://github.com/react-native-community/discussions-and-proposals/discussions/827
-   */
-  const safePadding = '5%';
-
-  return (
-    <View style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        style={backgroundStyle}>
-        <View style={{paddingRight: safePadding}}>
-          <Header/>
-        </View>
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-            paddingHorizontal: safePadding,
-            paddingBottom: safePadding,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
-
-export default App;
