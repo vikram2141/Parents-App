@@ -5,36 +5,33 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
-import CreateNewPasswordScreen from "./CreateNewPasswordScreen";
-import { useNavigation } from "@react-navigation/native"; // Import navigation hook
+import { useNavigation } from "@react-navigation/native";
 
 const OtpVerificationScreen = () => {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [timer, setTimer] = useState(15);
+  const [loading, setLoading] = useState(false);
   const inputRefs = useRef([]);
+  const navigation = useNavigation();
 
-  // Handle OTP input changes
+  // Handle OTP input
   const handleOtpChange = (value, index) => {
     if (isNaN(value)) return;
     let newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
-
-    // Move focus to the next input field if value is entered
-    if (value !== "" && index < 5) {
-      inputRefs.current[index + 1].focus();
-    }
+    if (value !== "" && index < 5) inputRefs.current[index + 1].focus();
   };
 
-  // Handle backspace key to move focus back
+  // Handle backspace navigation
   const handleBackspace = (value, index) => {
-    if (value === "" && index > 0) {
-      inputRefs.current[index - 1].focus();
-    }
+    if (value === "" && index > 0) inputRefs.current[index - 1].focus();
   };
 
-  // Start countdown for resend OTP
+  // Countdown timer for OTP resend
   useEffect(() => {
     if (timer > 0) {
       const interval = setInterval(() => {
@@ -44,11 +41,38 @@ const OtpVerificationScreen = () => {
     }
   }, [timer]);
 
-  const navigation = useNavigation(); // Initialize navigation
-  
-    const handleCreateNewPasswordScreen = () => {
-      navigation.navigate("CreateNewPassword");
-    };
+  // Verify OTP API call
+  const verifyOtp = async () => {
+    const otpCode = otp.join("");
+    if (otpCode.length < 6) {
+      Alert.alert("Invalid OTP", "Please enter a valid 6-digit OTP.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch("https://therapy.kidstherapy.me/api/verify-otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ otp: otpCode }),
+      });
+
+      const data = await response.json();
+      setLoading(false);
+
+      if (response.ok) {
+        Alert.alert("Success", data.message || "OTP Verified!");
+        navigation.navigate("CreateNewPassword");
+      } else {
+        Alert.alert("Error", data.message || "Invalid OTP. Try again.");
+      }
+    } catch (error) {
+      setLoading(false);
+      Alert.alert("Network Error", "Something went wrong. Please try again.");
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -62,10 +86,10 @@ const OtpVerificationScreen = () => {
       {/* OTP Verification Text */}
       <Text style={styles.title}>OTP Verification</Text>
       <Text style={styles.subtitle}>
-        Enter the 6 digits code that you received on your email.
+        Enter the 6-digit code sent to your email.
       </Text>
 
-      {/* OTP Inputs */}
+      {/* OTP Input */}
       <Text style={styles.label}>Enter Code</Text>
       <View style={styles.otpContainer}>
         {otp.map((digit, index) => (
@@ -75,9 +99,7 @@ const OtpVerificationScreen = () => {
             value={digit}
             onChangeText={(value) => handleOtpChange(value, index)}
             onKeyPress={({ nativeEvent }) => {
-              if (nativeEvent.key === "Backspace") {
-                handleBackspace(digit, index);
-              }
+              if (nativeEvent.key === "Backspace") handleBackspace(digit, index);
             }}
             keyboardType="number-pad"
             maxLength={1}
@@ -87,8 +109,16 @@ const OtpVerificationScreen = () => {
       </View>
 
       {/* Verify Button */}
-      <TouchableOpacity style={styles.verifyButton} onPress={handleCreateNewPasswordScreen}>
-        <Text style={styles.verifyButtonText}>Verify</Text>
+      <TouchableOpacity
+        style={styles.verifyButton}
+        onPress={verifyOtp}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.verifyButtonText}>Verify</Text>
+        )}
       </TouchableOpacity>
 
       {/* Resend OTP Section */}
@@ -114,7 +144,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#ffffff",
-    
   },
   header: {
     alignItems: "center",
@@ -141,33 +170,27 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#090D4D",
     marginBottom: 5,
-    paddingStart:20,   
-     marginLeft:-3,
-
-
+    paddingStart: 20,
   },
   subtitle: {
     fontSize: 14,
     color: "#090D4D",
     marginBottom: 20,
     textAlign: "center",
-    marginLeft:-17,
+    paddingRight:100
   },
   label: {
     fontSize: 14,
     fontWeight: "bold",
     marginBottom: 5,
     color: "#090D4D",
-    paddingStart:20,
-
+    paddingStart: 20,
   },
   otpContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 20,
-    paddingStart:20,
-    paddingEnd:20,
-
+    paddingHorizontal: 20,
   },
   otpInput: {
     width: 45,
@@ -182,12 +205,11 @@ const styles = StyleSheet.create({
   },
   verifyButton: {
     backgroundColor: "#0080DC",
-    padding: 10,
+    padding: 12,
     borderRadius: 60,
     alignItems: "center",
     marginTop: 30,
-    marginEnd:30,
-    marginStart:30,
+    marginHorizontal: 30,
   },
   verifyButtonText: {
     color: "#ffffff",
@@ -203,13 +225,13 @@ const styles = StyleSheet.create({
   resendText: {
     fontSize: 14,
     fontWeight: "bold",
-    color:"#0080DC"
+    color: "#0080DC",
   },
   timer: {
     fontSize: 14,
     fontWeight: "bold",
     color: "#0073e6",
-    marginLeft: 240,
+    marginLeft: 10,
   },
 });
 

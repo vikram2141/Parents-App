@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View,
   Text,
@@ -7,112 +8,146 @@ import {
   Image,
   FlatList,
   StyleSheet,
-  ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import AntDesign from "react-native-vector-icons/AntDesign";
 import FontAwesome from "react-native-vector-icons/FontAwesome";
-import Ionicons from "react-native-vector-icons/Ionicons"; 
-import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
-
+import axios from "axios";
 import { useNavigation } from "@react-navigation/native";
 
-
 const HomeScreen = () => {
- 
   const [showArchived, setShowArchived] = useState(false);
   const [showCanceled, setShowCanceled] = useState(true);
   const navigation = useNavigation();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [appointments, setAppointments] = useState([]);
 
-  const appointments = [
-    { id: "1", title: "Direct Therapy with Taha", date: "17 Feb 2025", time: "03:00 PM - 05:30 PM", billable: "Billable", status: "Completed" },
-    { id: "2", title: "Direct Therapy with John", date: "17 Feb 2025", time: "03:00 PM - 05:30 PM", billable: "Billable", status: "Completed" },
-    { id: "3", title: "Direct Therapy with John", date: "17 Feb 2025", time: "03:00 PM - 05:30 PM", billable: "Billable", status: "Pending" },
-    { id: "4", title: "Direct Therapy with John", date: "17 Feb 2025", time: "03:00 PM - 05:30 PM", billable: "Billable", status: "Need Verification" },
-    { id: "5", title: "Direct Therapy with John", date: "17 Feb 2025", time: "03:00 PM - 05:30 PM", billable: "Billable", status: "Completed" },
-    { id: "6", title: "Direct Therapy with John", date: "17 Feb 2025", time: "03:00 PM - 05:30 PM", billable: "Billable", status: "Completed" },
-    { id: "7", title: "Direct Therapy with John", date: "17 Feb 2025", time: "03:00 PM - 05:30 PM", billable: "Billable", status: "Need Verification" },
+  useEffect(() => {
+    fetchUserAndAppointments();
+  }, []);
 
-  ];
+  const fetchUserAndAppointments = async () => {
+    try {
+      setLoading(true);
+      const user = await AsyncStorage.getItem("userData");
+      if (!user) throw new Error("User not found in storage");
+
+      const userData = JSON.parse(user);
+      if (!userData.api_token) throw new Error("Token missing");
+
+      // Fetch User Profile
+      const profileResponse = await axios.get(
+        "https://therapy.kidstherapy.me/api/profile",
+        {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${userData.api_token}`,
+          },
+        }
+      );
+      setUser(profileResponse.data);
+
+      // Fetch Appointments
+      const appointmentsResponse = await axios.get(
+        "https://therapy.kidstherapy.me/api/therapist-appointments",
+        {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${userData.api_token}`,
+          },
+        }
+      );
+      setAppointments(appointmentsResponse.data.appointments);
+    } catch (error) {
+      console.error(
+        "Error fetching data:",
+        error.response ? error.response.data : error.message
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAppointmentPress = (appointment) => {
     navigation.navigate("GoalsListDetail", { appointment });
   };
- 
-  
 
-  const renderAppointment = ({ item }) => (
-    <TouchableOpacity onPress={() => handleAppointmentPress(item)} style={[styles.card, item.status === "Completed" ? styles.completedCard : styles.pendingCard]}>
-      <View style={styles.iconContainer}>
-        {item.status === "Completed" ? (
-          <AntDesign name="checksquare" size={40} color="#00AB5F" />
-        ) : (
-          <FontAwesome name="calendar" size={40} color="#FF6930" />
-        )}
-      </View>
+  const renderAppointment = ({ item }) => {
+    const status =
+      item.appointment_status?.name === "Completed" ? "Completed" : "Pending";
 
-      <View style={styles.detailsContainer}>
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.date}>{`${item.date}  ${item.time}`}</Text>
-        <View style={styles.statusContainer}>
-          <Text style={styles.billable}>{item.billable}</Text>
-          <Text style={[styles.statusText, item.status === "Completed" ? styles.completedText : styles.pendingText]}>
-            {item.status}
-          </Text>
+    return (
+      <TouchableOpacity
+        onPress={() => handleAppointmentPress(item)}
+        style={[
+          styles.card,
+          status === "Completed" ? styles.completedCard : styles.pendingCard,
+        ]}
+      >
+        <View style={styles.iconContainer}>
+          {status === "Completed" ? (
+            <AntDesign name="checksquare" size={40} color="#00AB5F" />
+          ) : (
+            <FontAwesome name="calendar" size={40} color="#FF6930" />
+          )}
         </View>
-      </View>
-    </TouchableOpacity>
-  );
 
-  const handleDataDetailScreen = () => {
-    navigation.navigate("DataDetail");
+        <View style={styles.detailsContainer}>
+          <Text style={styles.title}>
+            Direct Therapy with {item.user?.name}
+          </Text>
+          <Text style={styles.date}>
+            {`${item.appointment_date}  ${item.start_time} - ${item.end_time}`}
+          </Text>
+          <View style={styles.statusContainer}>
+            <Text style={styles.billable}>Billable</Text>
+            <Text
+              style={[
+                styles.statusText,
+                status === "Completed" ? styles.completedText : styles.pendingText,
+              ]}
+            >
+              {status}
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
   };
 
-  const handleGoalsListDetailScreen = () => {
-    navigation.navigate("GoalsListDetail");
-  };
-  const handleProfileScreen = () => {
-    navigation.navigate("Profile");
-  };
-  const handleCollectDataScreen = () => {
-    navigation.navigate("CollectData");
-  }; 
-  const handleInvoiceScreen = () => {
-    navigation.navigate("InvoiceScreen");
-  };
-  const handleNotificationScreen = () => {
-    navigation.navigate("Notification");
-  };
-  
+  if (loading) {
+    return <ActivityIndicator size="large" color="#0000ff" />;
+  }
 
   return (
     <View style={styles.container}>
-       
-
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.userInfo}>
           <Image
-            source={{ uri: "https://s3-alpha-sig.figma.com/img/4162/414c/9b3f703ad8d5623b1cf082032f5945e2?Expires=1741564800&Key-Pair-Id=APKAQ4GOSFWCW27IBOMQ&Signature=mYPodw9VISmiL3Te0b0NsD1K3t9IV6JBwH7V0~RER-1unny7yayjiksOTxetl0XU0uwV1KqsAUbQ8vThqHlMm42EawzLagnpyx02xITEu3CH7wzGBNvOWNekEp2NiRZ~3etFDkC-LKjgEScvKTGjZCcg4hU3D0NV2fAYDH0kVez2cKLlEkHCQXxexzCkOIeOv7MraUxkyZVZyvNOE9tsWlmwIpNckULLd~eImFK1-c1wEloYTSaCnyBtKpDg4pd6EV4~FAgJ0Cw20HWMISE9KWFZcAjp6vRYqBhzZvZGn19fLG7rZxqhAABopPZuehdneCD7ZnRrPngd~Y3yfqHPpQ__" }}
+            source={{
+              uri: user?.profile_picture || "https://via.placeholder.com/100",
+            }}
             style={styles.profileImage}
           />
-          <View>
-            <Text style={styles.welcomeText}>Welcome Back,</Text>
-            <Text style={styles.username}>Taha</Text>
-          </View>
+          <Text style={styles.welcomeText}>Welcome Back,</Text>
+          <Text style={styles.username}>{user?.name || "User"}</Text>
         </View>
 
-        {/* Logo & Notification Icon */}
+        {/* Notification Icon */}
         <View style={styles.headerIcons}>
           <TouchableOpacity style={styles.logoButton}>
-            <Text style={styles.logoText}>Logo Here</Text>
-          </TouchableOpacity >
-          <TouchableOpacity style={styles.bell} onPress={handleNotificationScreen}>
-          <FontAwesome name="bell" size={20} color="#0080DC"   />
+            <Image
+              source={require("../../src/assets/sun.png")}
+              style={styles.logoImage}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.bell} onPress={() => navigation.navigate("Notification")}>
+            <FontAwesome name="bell" size={20} color="#0080DC" />
           </TouchableOpacity>
         </View>
       </View>
-
-
 
       {/* Toggle Switches */}
       <View style={styles.toggleContainer}>
@@ -129,38 +164,40 @@ const HomeScreen = () => {
       <Text style={styles.calendarTitle}>Calendar</Text>
 
       {/* Appointments List */}
-      <ScrollView>
-        <FlatList data={appointments} keyExtractor={(item) => item.id} renderItem={renderAppointment} />
-      </ScrollView>
+      <FlatList
+        data={appointments}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={renderAppointment}
+        ListEmptyComponent={() => <Text style={styles.noData}>No Appointments</Text>}
+      />
+
       {/* Bottom Navigation */}
-       <View style={styles.bottomNav}>
-              <TouchableOpacity style={styles.navItem} >
-                <FontAwesome name="home" size={24} color="white" />
-                <Text style={styles.navText}>Home</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.navItem} onPress={handleCollectDataScreen}>
-                <FontAwesome name="database" size={24} color="white" />
-                <Text style={styles.navText}>Data Collect</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.navItem} onPress={handleInvoiceScreen}>
-                <FontAwesome5 name="file-invoice-dollar" size={24} color="white" />
-                <Text style={styles.navText}>Invoice</Text>
-              </TouchableOpacity> 
-
-              <TouchableOpacity style={styles.navItem} onPress={handleProfileScreen}>
-              <Image
-            source={{ uri: "https://s3-alpha-sig.figma.com/img/4162/414c/9b3f703ad8d5623b1cf082032f5945e2?Expires=1741564800&Key-Pair-Id=APKAQ4GOSFWCW27IBOMQ&Signature=mYPodw9VISmiL3Te0b0NsD1K3t9IV6JBwH7V0~RER-1unny7yayjiksOTxetl0XU0uwV1KqsAUbQ8vThqHlMm42EawzLagnpyx02xITEu3CH7wzGBNvOWNekEp2NiRZ~3etFDkC-LKjgEScvKTGjZCcg4hU3D0NV2fAYDH0kVez2cKLlEkHCQXxexzCkOIeOv7MraUxkyZVZyvNOE9tsWlmwIpNckULLd~eImFK1-c1wEloYTSaCnyBtKpDg4pd6EV4~FAgJ0Cw20HWMISE9KWFZcAjp6vRYqBhzZvZGn19fLG7rZxqhAABopPZuehdneCD7ZnRrPngd~Y3yfqHPpQ__" }}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity style={styles.navItem}>
+          <FontAwesome name="home" size={24} color="white" />
+          <Text style={styles.navText}>Home</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("CollectData")}
+        >
+          <FontAwesome name="database" size={24} color="white" />
+          <Text style={styles.navText}>Data Collect</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("Profile")}
+        >
+          <Image
+            source={{ uri: user?.profile_picture || "https://via.placeholder.com/100" }}
             style={styles.profileImages}
-          />              <Text style={styles.navText}>Profile</Text>
-              </TouchableOpacity>
-            </View>
-
+          />
+          <Text style={styles.navText}>Profile</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
-// Navigation Item Component
-
 
 
 const styles = StyleSheet.create({
@@ -220,7 +257,7 @@ const styles = StyleSheet.create({
     },
     username: {
       color: "#fff",
-      fontSize: 22,
+      fontSize: 16,
       fontWeight: "bold",
       marginStart:20,
   
@@ -238,17 +275,32 @@ const styles = StyleSheet.create({
     
 
     },
+    logoButton: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 10,
+    },
+    logoImage: {
+      width: 100, // Adjust size as needed
+      height: 100, // Adjust size as needed
+      resizeMode: 'contain',    
+        borderRadius:90,
+        paddingHorizontal: 20,
+        paddingVertical: 5,
+        borderRadius: 6,
+
+    },
     headerIcons: {
       flexDirection: "row",
       alignItems: "center",
     },
     logoButton: {
       backgroundColor: "#fff",
-      paddingHorizontal: 20,
-      paddingVertical: 5,
-      borderRadius: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 10,
+      borderRadius: 60,
       marginRight:80,
-      top:-15,
+      
     },
     logoText: {
       fontSize: 14,
