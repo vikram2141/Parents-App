@@ -14,6 +14,7 @@ import AntDesign from "react-native-vector-icons/AntDesign";
 import FontAwesome from "react-native-vector-icons/FontAwesome";
 import axios from "axios";
 import { useNavigation } from "@react-navigation/native";
+import FontAwesome5 from 'react-native-vector-icons/FontAwesome5'
 
 const HomeScreen = () => {
   const [showArchived, setShowArchived] = useState(false);
@@ -50,7 +51,7 @@ const HomeScreen = () => {
 
       // Fetch Appointments
       const appointmentsResponse = await axios.get(
-        "https://therapy.kidstherapy.me/api/therapist-appointments",
+       'https://therapy.kidstherapy.me/api/patient-appointments',
         {
           headers: {
             Accept: "application/json",
@@ -72,7 +73,9 @@ const HomeScreen = () => {
   const handleAppointmentPress = (appointment) => {
     navigation.navigate("GoalsListDetail", { appointment });
   };
-
+  const handleInvoiceScreen = () => {
+    navigation.navigate("InvoiceScreen");
+  };
   const renderAppointment = ({ item }) => {
     const status =
       item.appointment_status?.name === "Completed" ? "Completed" : "Pending";
@@ -184,6 +187,10 @@ const HomeScreen = () => {
           <FontAwesome name="database" size={24} color="white" />
           <Text style={styles.navText}>Data Collect</Text>
         </TouchableOpacity>
+          <TouchableOpacity style={styles.navItem} onPress={handleInvoiceScreen}>
+                                           <FontAwesome5 name="file-invoice-dollar" size={24} color="white" />
+                                           <Text style={styles.navText}>Invoice</Text>
+                                         </TouchableOpacity> 
         <TouchableOpacity
           style={styles.navItem}
           onPress={() => navigation.navigate("Profile")}
@@ -236,16 +243,10 @@ const styles = StyleSheet.create({
     userInfo: {
     alignItems: "center",
     },
-    profileImage: {
+    
+    profileImages:{
       width: 40,
       height: 40,
-      borderRadius: 25,
-      marginRight: 10,
-      
-    },
-    profileImages:{
-      width: 25,
-      height: 25,
       borderRadius: 25,
       marginRight: 10,
     },
@@ -253,11 +254,12 @@ const styles = StyleSheet.create({
       color: "#fff",
       fontSize: 12,
       marginTop:10,
-      marginStart:20,
+      marginStart:0,
     },
     username: {
       color: "#fff",
-      fontSize: 16,
+      fontSize: 12,
+      width:100,
       fontWeight: "bold",
       marginStart:20,
   
