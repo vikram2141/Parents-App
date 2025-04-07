@@ -1,4 +1,3 @@
-"use client"
 
 import React, { useState, useEffect } from "react"
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from "react-native"
@@ -102,10 +101,6 @@ const GoalsListDetailScreen = ({ route }) => {
         </TouchableOpacity>
         <Text style={styles.logoText}>Goals List</Text>
       </View>
-      {/* Sync Button */}
-      <TouchableOpacity style={styles.syncButton} onPress={() => Alert.alert("Sync", "Syncing data...")}>
-        <Text style={styles.syncText}>Sync</Text>
-      </TouchableOpacity>
 
       {/* Tab Buttons */}
       <View style={styles.buttonContainer}>
@@ -137,7 +132,7 @@ const GoalsListDetailScreen = ({ route }) => {
             </View>
             <View style={styles.row}>
               <Text style={styles.label}>Doctor name:</Text>
-              <Text style={styles.value}>{user?.name || "Pallavi Nathani"}</Text>
+              <Text style={styles.value}>{  "Pallavi Nathani"|| "Pallavi Nathani"}</Text>
             </View>
             <View style={styles.row}>
               <Text style={styles.label}>Therapy:</Text>
@@ -169,9 +164,9 @@ const GoalsListDetailScreen = ({ route }) => {
           <Text style={styles.errorText}>No appointment data available</Text>
         )}
       </ScrollView>
-      <TouchableOpacity style={styles.collectButton} onPress={() => navigation.navigate("CollectData")}>
+      {/* <TouchableOpacity style={styles.collectButton} onPress={() => navigation.navigate("CollectData")}>
         <Text style={styles.collectButtonText}>Send for Signin</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   )
 }
@@ -199,23 +194,12 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 22,
     fontWeight: "bold",
-    textAlign: "center",
+    textAlign:"center",
     flex: 1,
+    
   },
-  syncButton: {
-    alignSelf: "flex-end",
-    backgroundColor: "#E7EDFF",
-    borderWidth: 1,
-    borderColor: "#0080DC",
-    paddingVertical: 8,
-    paddingHorizontal: 32,
-    borderRadius: 50,
-    marginRight: 20,
-  },
-  syncText: {
-    color: "#0080DC",
-    fontWeight: "bold",
-  },
+  
+ 
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-around",

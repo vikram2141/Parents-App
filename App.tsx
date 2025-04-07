@@ -15,6 +15,7 @@ import GoalsListNotesScreen from './src/Screens/GoalsListNotesScreen';
 import NotificationScreen from './src/Screens/NotificationScreen';
 import CollectDataScreen from './src/Screens/CollectDataScreen';
 import InvoiceScreen from './src/Screens/InvoiceScreen';
+import InvoiceDetailScreen from './src/Screens/InvoiceDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -36,9 +37,8 @@ export default function App() {
         <Stack.Screen name="Notification" component={NotificationScreen} options={{ headerShown: false }} />
         <Stack.Screen name="CollectData" component={CollectDataScreen} options={{ headerShown: false }} />
         <Stack.Screen name="InvoiceScreen" component={InvoiceScreen} options={{ headerShown: false }} />
-
-
-      </Stack.Navigator>
+        <Stack.Screen name="InvoiceDetailScreen" component={InvoiceDetailScreen} options={{ headerShown: false }}/>
+ </Stack.Navigator>
     </NavigationContainer>
   );
 }

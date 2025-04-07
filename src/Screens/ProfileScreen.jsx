@@ -1,17 +1,23 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, Modal, FlatList } from "react-native";
+import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, Modal, FlatList ,Dimensions} from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import FormData from "form-data";
+import FontAwesome from "react-native-vector-icons/FontAwesome";
+import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
+
+
+const screenWidth = Dimensions.get('window').width;
 
 const ProfileScreen = () => {
   const [logoutVisible, setLogoutVisible] = useState(false);
   const [profile, setProfile] = useState(null);
   const [emailDataUpdate, setEmailDataUpdate] = useState("");
   const navigation = useNavigation();
+  const screenWidth = Dimensions.get('window').width;
 
   useEffect(() => {
     fetchProfile();
@@ -112,6 +118,24 @@ const ProfileScreen = () => {
           </View>
         </View>
       </Modal>
+       <View style={styles.bottomNav}>
+              <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")}>
+                <FontAwesome name="home" size={24} color="white" />
+                <Text style={styles.navText}>Home</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("CollectData")}>
+                <FontAwesome name="database" size={24} color="white" />
+                <Text style={styles.navText}>Data Collect</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("InvoiceScreen")}>
+                <FontAwesome5 name="file-invoice-dollar" size={24} color="white" />
+                <Text style={styles.navText}>Invoice</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Profile")}>
+                <FontAwesome name="user" size={24} color="white" />
+                <Text style={styles.navText}>Profile</Text>
+              </TouchableOpacity>
+            </View>
     </View>
   );
 };
@@ -124,7 +148,19 @@ const styles = StyleSheet.create({
   profileImage: { width: 90, height: 90, borderRadius: 50 },
   profileName: { fontSize: 18, fontWeight: "bold", marginTop: 10 },
   loadingText: { textAlign: "center", fontSize: 16, marginTop: 20 },
-  inputContainer: { paddingHorizontal: 20, marginTop: 20 },
+  inputContainer: { paddingHorizontal: 20, marginTop: 20 }, bottomNav: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: '#007bff',
+    padding: 10,
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  navItem: { alignItems: 'center' },
+  navText: { color: 'white', fontSize: 12, marginTop: 2 },
   label: { fontSize: 16, fontWeight: "bold", marginBottom: 5 },
   input: { backgroundColor: "#E7EDFF", padding: 15, borderRadius: 10, marginBottom: 15 },
   logoutButton: { flexDirection: "row", alignItems: "center", backgroundColor: "#E7EDFF", padding: 20, borderRadius: 10, margin: 20 },

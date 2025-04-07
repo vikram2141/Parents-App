@@ -1,135 +1,203 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native";
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
-import { useNavigation } from "@react-navigation/native";
-import MultiSelect from 'react-native-multiple-select';
-import AntDesign from "react-native-vector-icons/AntDesign";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
-import FormData from "form-data";
-import Ionicons from "react-native-vector-icons/Ionicons";
+"use client"
+
+import { useState, useEffect, useCallback } from "react"
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  ScrollView,
+} from "react-native"
+import Icon from "react-native-vector-icons/MaterialCommunityIcons"
+import { useNavigation } from "@react-navigation/native"
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import axios from "axios"
 
 const GoalsListVerify = () => {
   const [formData, setFormData] = useState({
     caregiverName: "",
     caregiverSignature: "",
     staffName: "",
-  });
+  })
 
-  const [selectedStaff, setSelectedStaff] = useState([]);
-  const [staffList, setStaffList] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const navigation = useNavigation();
+  const [selectedStaff, setSelectedStaff] = useState([])
+  const [staffList, setStaffList] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [modalVisible, setModalVisible] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
+  const navigation = useNavigation()
 
-  useEffect(() => {
-    const fetchTherapists = async () => {
-      try {
-        const storedUserData = await AsyncStorage.getItem("userData");
-        if (!storedUserData) {
-          console.error("User data not found in AsyncStorage");
-          return;
-        }
-
-        const userData = JSON.parse(storedUserData);
-        const token = userData?.api_token;
-        if (!token) {
-          console.error("No token found in stored user data");
-          return;
-        }
-
-        console.log("Fetching therapists with token:", token);
-
-        const response = await axios.get("https://therapy.kidstherapy.me/api/therapist-list", {
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        console.log("API Response:", response.data);
-
-        if (response.data && Array.isArray(response.data.therapists)) {
-          const formattedData = response.data.therapists.map((therapist) => ({
-            label: therapist.name,
-            value: therapist.id.toString(),
-          }));
-          setStaffList(formattedData);
-        } else {
-          console.error("Unexpected API response format:", response.data);
-        }
-      } catch (error) {
-        console.error("Error fetching therapists:", error.response?.data || error.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTherapists();
-  }, []);
-
-  const handleInputChange = (name, value) => {
-    setFormData({ ...formData, [name]: value });
-  };
-
-  
-  const handleSave = async () => {
+  // Function to get user data from AsyncStorage
+  const getUserData = useCallback(async () => {
     try {
-      const storedUserData = await AsyncStorage.getItem("userData");
-      if (!storedUserData) {
-        Alert.alert("Error", "User data not found.");
-        return;
+      const user = await AsyncStorage.getItem("userData")
+      if (!user) throw new Error("User not found in storage")
+
+      const parsedUserData = JSON.parse(user)
+      return parsedUserData
+    } catch (error) {
+      console.error("Error getting user data:", error)
+      Alert.alert("Error", "Failed to get user data. Please login again.")
+      return null
+    }
+  }, [])
+
+  // Fetch therapists from API
+  const fetchTherapists = useCallback(async () => {
+    try {
+      setLoading(true)
+
+      const userData = await getUserData()
+      if (!userData) {
+        setLoading(false)
+        return
       }
 
-      const userData = JSON.parse(storedUserData);
-      const token = userData?.api_token;
+      const token = userData?.api_token
       if (!token) {
-        Alert.alert("Error", "No authentication token found.");
-        return;
+        console.error("No token found in stored user data")
+        setLoading(false)
+        return
       }
 
-      let data = new FormData();
-      data.append("note_id","74"); 
-      data.append("therapist_id_or_staff_ids", formData.staffName);
-      data.append("parent_name", formData.caregiverName);
-      data.append("parent_signature", formData.caregiverSignature);
+      console.log("Fetching therapists with token:", token)
 
-      let config = {
-        method: "post",
-        url: "https://therapy.kidstherapy.me/api/verify-mark-signin",
+      const response = await axios.get("https://therapy.kidstherapy.me/api/therapist-list", {
         headers: {
           Accept: "application/json",
-          "Content-Type": "multipart/form-data",
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        data: data,
-      };
+      })
 
-      const response = await axios.request(config);
-      console.log("API Response:", response.data);
+      console.log("API Response:", response.data)
 
-      if (response.data.success) {
-        Alert.alert("Success", "Data saved successfully!");
+      if (response.data && Array.isArray(response.data.therapists)) {
+        const formattedData = response.data.therapists.map((therapist) => ({
+          label: therapist.name,
+          value: therapist.id.toString(),
+        }))
+        setStaffList(formattedData)
+
+        // Set selected staff from API (assuming staffName contains IDs)
+        if (formData.staffName) {
+          try {
+            // Try to parse as JSON first (in case it's stored as JSON array)
+            let staffIds
+            try {
+              staffIds = JSON.parse(formData.staffName)
+            } catch {
+              // If not JSON, split by comma
+              staffIds = formData.staffName.split(",")
+            }
+
+            // Ensure all IDs are strings
+            const selectedIds = staffIds.map((id) => id.toString())
+            setSelectedStaff(selectedIds)
+          } catch (error) {
+            console.error("Error parsing staff IDs:", error)
+            setSelectedStaff([])
+          }
+        }
       } else {
-        Alert.alert("Error", response.data.message || "Failed to save data.");
+        console.error("Unexpected API response format:", response.data)
+        Alert.alert("Error", "Failed to load therapist list. Please try again.")
       }
     } catch (error) {
-      console.error("Error saving data:", error.response?.data || error.message);
-      Alert.alert("Error", "Something went wrong. Please try again.");
+      console.error("Error fetching therapists:", error.response?.data || error.message)
+      Alert.alert("Error", "Failed to load therapist list. Please try again.")
+    } finally {
+      setLoading(false)
     }
-  };
+  }, [getUserData, formData.staffName])
+
+  // Add or remove staff from selection
+  const toggleStaffSelection = (staffId) => {
+    setSelectedStaff((prev) => {
+      if (prev.includes(staffId)) {
+        return prev.filter((id) => id !== staffId)
+      } else {
+        return [...prev, staffId]
+      }
+    })
+  }
+
+  useEffect(() => {
+    fetchTherapists()
+  }, [fetchTherapists])
+
+  // Filter staff list based on search term
+  const filteredStaff = staffList.filter((staff) => staff.label.toLowerCase().includes(searchTerm.toLowerCase()))
+
+  // Render staff selection modal
+  const renderStaffSelectionModal = () => (
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={modalVisible}
+      onRequestClose={() => setModalVisible(false)}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Select Staff</Text>
+            <TouchableOpacity onPress={() => setModalVisible(false)}>
+              <Icon name="close" size={24} color="#007BFF" />
+            </TouchableOpacity>
+          </View>
+
+          <FlatList
+            data={filteredStaff}
+            keyExtractor={(item) => item.value}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[styles.staffItem, selectedStaff.includes(item.value) && styles.selectedStaffItemInList]}
+                onPress={() => toggleStaffSelection(item.value)}
+              >
+                <Text
+                  style={[
+                    styles.staffItemText,
+                    selectedStaff.includes(item.value) && styles.selectedStaffItemTextInList,
+                  ]}
+                >
+                  {item.label}
+                </Text>
+                {selectedStaff.includes(item.value) && <Icon name="check" size={20} color="#fff" />}
+              </TouchableOpacity>
+            )}
+            ListEmptyComponent={<Text style={styles.emptyListText}>No staff found</Text>}
+          />
+
+          <TouchableOpacity
+            style={styles.doneButton}
+            onPress={() => {
+              setModalVisible(false)
+              // Update formData with selected staff IDs
+              setFormData((prev) => ({
+                ...prev,
+                staffName: selectedStaff.join(","),
+              }))
+            }}
+          >
+            <Text style={styles.doneButtonText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  )
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-      <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate("Home")}>
-      <Icon name="chevron-left" size={30} color="white" />
-</TouchableOpacity>
-
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate("Home")}>
+          <Icon name="chevron-left" size={30} color="white" />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Goals List</Text>
       </View>
-
-     
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={styles.inactiveButton} onPress={() => navigation.navigate("GoalsListDetail")}>
@@ -143,55 +211,56 @@ const GoalsListVerify = () => {
         </TouchableOpacity>
       </View>
 
-      {/* <Text style={styles.label}>Parent/Caregiver</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter Name"
-        value={formData.caregiverName}
-        onChangeText={(text) => handleInputChange("caregiverName", text)}
-      /> */}
+      <ScrollView style={styles.scrollContainer}>
+        <View style={styles.staffSection}>
+          <Text style={styles.label}>Name of Staff</Text>
 
-      {/* <Text style={styles.label}>Parent/Caregiver Signature</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter Signature"
-        value={formData.caregiverSignature}
-        onChangeText={(text) => handleInputChange("caregiverSignature", text)}
-      /> */}
+          {loading ? (
+            <ActivityIndicator size="large" color="#007BFF" style={styles.loader} />
+          ) : (
+            <>
+              <TouchableOpacity style={styles.staffSelector} onPress={() => setModalVisible(true)}>
+                <Text style={styles.staffSelectorText}>
+                  {selectedStaff.length > 0 ? `${selectedStaff.length} staff selected` : "Select Staff"}
+                </Text>
+                <Icon name="chevron-down" size={24} color="#007BFF" />
+              </TouchableOpacity>
 
-      <Text style={styles.label}>Name of Staff</Text>
-      {loading ? (
-        <ActivityIndicator size="large" color="#0000ff" />
-      ) : (
-        <MultiSelect
-  items={staffList}
-  uniqueKey="value"
-  onSelectedItemsChange={(selectedItems) => setSelectedStaff(selectedItems)}
-  selectedItems={selectedStaff}
-  selectText="  Select Staff"
-  searchInputPlaceholderText="Search..."
-  tagRemoveIconColor="#007bff"
-  tagBorderColor="#007bff"
-  tagTextColor="#007bff"
-  selectedItemTextColor="#007bff"
-  selectedItemIconColor="#007bff"
-  itemTextColor="#000"
-  displayKey="label"
-  searchInputStyle={styles.searchInput}
-  submitButtonText="Done"
-  styleDropdownMenuSubsection={styles.dropdownMenu}
-  styleInputGroup={styles.inputGroup}
-  styleItemsContainer={styles.itemsContainer}
-  styleSelectorContainer={styles.selectorContainer}
-  styleMainWrapper={styles.mainWrapper}
-/>
+              <View style={styles.selectedStaffContainer}>
+                {selectedStaff.length > 0 ? (
+                  selectedStaff.map((staffId) => {
+                    const staff = staffList.find((s) => s.value === staffId)
+                    return (
+                      <View key={staffId} style={styles.selectedStaffItem}>
+                        <Text style={styles.selectedStaffText}>{staff ? staff.label : "Unknown Staff"}</Text>
+                        <TouchableOpacity
+                          style={styles.removeStaffButton}
+                          onPress={() => toggleStaffSelection(staffId)}
+                        >
+                          <Icon name="close" size={16} color="#fff" />
+                        </TouchableOpacity>
+                      </View>
+                    )
+                  })
+                ) : (
+                  <Text style={styles.noStaffText}>No staff selected</Text>
+                )}
+              </View>
+            </>
+          )}
+        </View>
 
-        
-      )}
+        {/* Add more form fields here as needed */}
+
+        <TouchableOpacity style={styles.saveButton}>
+          <Text style={styles.saveButtonText}>Save</Text>
+        </TouchableOpacity>
+      </ScrollView>
+
+      {renderStaffSelectionModal()}
     </View>
-  );
-};
-
+  )
+}
 
 // Styles
 const styles = StyleSheet.create({
@@ -200,247 +269,183 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   header: {
-    backgroundColor: "#007BFF",
-    padding: 40,
+    flexDirection: "row",
     alignItems: "center",
-  },
-  headerTitle: {
-    color: "white",
-    fontSize: 20,
-    fontWeight: "bold",
-  }, header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    // justifyContent: 'space-between',
-    backgroundColor: '#007AFF', borderBottomLeftRadius: 30,
+    backgroundColor: "#007AFF",
+    borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
     paddingHorizontal: 20,
     paddingVertical: 30,
-    paddingHorizontal: 20,
-  }, searchInput: {
-    color: "#000",
-    fontSize: 16,
-    padding: 8,
-  },
-  dropdownMenu: {
-    backgroundColor: "#F5F5F5",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    borderWidth: 1,
-    padding:22,    
-
-    borderColor: "#007bff",
-  },
-  inputGroup: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderWidth: 1,
-    padding:5,
-    borderColor: "#007bff",
-  },
-  itemsContainer: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 15,
-  },
-  selectorContainer: {
-    marginVertical: 5,
-  },
-  mainWrapper: {
-    marginHorizontal: 20,
-    marginBottom: 10,
   },
   backButton: {
     padding: 5,
     width: 40,
   },
-  
-  tabContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    padding:23,
-  }, buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginVertical: 12,
-    marginHorizontal:4,
-  },
-   activeButton: {
-    backgroundColor: '#007bff',
-    paddingVertical: 8,
-    paddingHorizontal: 32,
-    borderRadius: 20,
-  },
-  inactiveButton: {
-    borderColor: '#007bff',
-    borderWidth: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 32,
-    borderRadius: 20,
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 8,
-    marginHorizontal: 12,
-    borderRadius: 0,
-    backgroundColor: "white",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#0080DC",
-    
-  },
-  activeTab: {
-    backgroundColor: "#0080DC",
-  },
-  tabText: {
-    color: "#0080DC",
-    fontWeight: "bold",
-    
-  },
-  activeTabText: {
-    color: "#FFFFFF",
-  },
   headerTitle: {
-    color: 'white',
+    color: "white",
     fontSize: 22,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
     flex: 1,
   },
-  syncButton: {
-    backgroundColor: 'white',
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 20,
-    top:5,
-    width: 100,
-    marginStart:270,
-    borderWidth:1,
-    borderColor:"blue",
-    alignItems: 'center',
-    marginRight:20,
-    marginLeft:200,
-  },
-  syncText: {
-    color: '#007AFF',
-    fontWeight: '500',
-    fontSize: 16,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 15,
-    paddingBottom: 5,
-  },
-  tab: {
-    paddingVertical: 8,
-    paddingHorizontal: 25,
-    borderRadius: 25,
-    marginHorizontal: 5,
-    borderWidth: 1,
-    borderColor: '#007AFF',
-  },
-  activeTab: {
-    backgroundColor: '#007AFF',
-  },
-  tabText: {
-    color: '#007AFF',
-    fontWeight: '500',
-    fontSize: 16,
-  },
-  activeTabText: {
-    color: 'black',
-  },
-  scrollContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  buttonGroup: {
+  buttonContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginVertical: 10,
+    justifyContent: "space-around",
+    marginVertical: 12,
+    marginHorizontal: 4,
   },
-  buttonOutline: {
-    borderWidth: 1,
-    borderColor: "#007BFF",
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-  },
-  buttonTextOutline: {
-    color: "#007BFF",
-    fontWeight: "bold",
-  },
-  buttonPrimary: {
-    backgroundColor: "#007BFF",
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-  },
-  buttonText: {
-    color: "white",
-    fontWeight: "bold",
-  },
-  buttonDisabled: {
-    backgroundColor: "#E0E0E0",
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    marginLeft:250,
-    marginRight:20,
-  },
-  buttonTextDisabled: {
-    color: "#A0A0A0",
-    fontWeight: "bold",
-    alignItems:"center",
-    
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "bold",
-    marginTop: 5,
-    marginBottom: 5,
-    padding:12,
-    marginHorizontal:20,
-
-
-  },
-  input: {
-    backgroundColor: "#F5F5F5",
-    padding: 12,
-    borderRadius: 10,
-    fontSize: 14,
-    marginHorizontal:20,
-    color:"black",
-    
-  },
-  saveButton: {
-    backgroundColor: "#007BFF",
-    padding: 12,
-    borderRadius: 60,
-    alignItems: "center",
-    marginTop: 70,
-    margin:20,
-  },activeButton: {
+  activeButton: {
     backgroundColor: "#007bff",
     paddingVertical: 8,
     paddingHorizontal: 32,
     borderRadius: 20,
   },
+  inactiveButton: {
+    borderColor: "#007bff",
+    borderWidth: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 32,
+    borderRadius: 20,
+  },
+  buttonText: {
+    color: "white",
+    fontWeight: "bold",
+  },
+  inactiveText: {
+    color: "#007bff",
+    fontWeight: "bold",
+  },
+  scrollContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  staffSection: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  loader: {
+    marginVertical: 20,
+  },
+  staffSelector: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#F5F5F5",
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#007bff",
+    marginBottom: 10,
+  },
+  staffSelectorText: {
+    fontSize: 16,
+    color: "#333",
+  },
+  selectedStaffContainer: {
+    marginTop: 10,
+  },
+  selectedStaffItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#007bff",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  selectedStaffText: {
+    color: "white",
+    fontSize: 16,
+    flex: 1,
+  },
+  removeStaffButton: {
+    padding: 5,
+  },
+  noStaffText: {
+    fontSize: 14,
+    color: "gray",
+    fontStyle: "italic",
+    padding: 10,
+  },
+  saveButton: {
+    backgroundColor: "#007BFF",
+    padding: 15,
+    borderRadius: 30,
+    alignItems: "center",
+    marginTop: 30,
+    marginBottom: 20,
+  },
   saveButtonText: {
     color: "white",
     fontSize: 16,
     fontWeight: "bold",
-  },dropdown: { marginHorizontal: 20, backgroundColor: "#F5F5F5", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8 },
-  placeholderStyle: { fontSize: 14, color: "#A0A0A0" },
-  selectedTextStyle: { fontSize: 14, color: "#000" },
-  inputSearchStyle: { fontSize: 14, color: "#000" },
-  iconStyle: { marginRight: 10 },
-  icon: { marginRight: 10 },
-});
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalContent: {
+    width: "90%",
+    maxHeight: "80%",
+    backgroundColor: "white",
+    borderRadius: 10,
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#007BFF",
+  },
+  staffItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  selectedStaffItemInList: {
+    backgroundColor: "#007BFF",
+    borderRadius: 8,
+  },
+  staffItemText: {
+    fontSize: 16,
+    color: "#333",
+  },
+  selectedStaffItemTextInList: {
+    color: "white",
+  },
+  emptyListText: {
+    textAlign: "center",
+    padding: 20,
+    color: "gray",
+    fontStyle: "italic",
+  },
+  doneButton: {
+    backgroundColor: "#007BFF",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 15,
+  },
+  doneButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+})
 
-export default GoalsListVerify;
+export default GoalsListVerify
+
