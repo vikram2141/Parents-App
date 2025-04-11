@@ -1,5 +1,3 @@
-"use client"
-
 import { useEffect, useState, useCallback } from "react"
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from "react-native"
 import { useNavigation } from "@react-navigation/native"
@@ -92,71 +90,71 @@ const InvoiceTable = () => {
       }
 
       console.log("Fetching invoice details for ID:", invoiceId)
-
+      
       // Try to get the raw HTML content first
       try {
-        const response = await fetch("https://therapy.kidstherapy.me/api/show-invoice", {
-          method: "POST",
+        const response = await fetch('https://therapy.kidstherapy.me/api/show-invoice', {
+          method: 'POST',
           headers: {
-            Accept: "application/json, text/html",
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${user.api_token}`,
+            'Accept': 'application/json, text/html',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${user.api_token}`
           },
           body: JSON.stringify({
-            invoice_id: invoiceId,
-          }),
-        })
-
+            invoice_id: invoiceId
+          })
+        });
+        
         // Check if the response is HTML
-        const contentType = response.headers.get("content-type")
-        if (contentType && contentType.includes("text/html")) {
-          const htmlContent = await response.text()
-          console.log("Received HTML content")
-          return htmlContent
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('text/html')) {
+          const htmlContent = await response.text();
+          console.log("Received HTML content");
+          return htmlContent;
         }
-
+        
         // If not HTML, try to parse as JSON
-        const data = await response.json()
-        console.log("Invoice Details Response:", JSON.stringify(data, null, 2))
-        return data
+        const data = await response.json();
+        console.log("Invoice Details Response:", JSON.stringify(data, null, 2));
+        return data;
       } catch (error) {
-        console.error("First approach failed:", error.message)
-
+        console.error("First approach failed:", error.message);
+        
         // Try alternative approach with FormData
-        console.log("Trying alternative approach with FormData")
-        const formData = new FormData()
-        formData.append("invoice_id", invoiceId)
-
-        const response = await fetch("https://therapy.kidstherapy.me/api/show-invoice", {
-          method: "POST",
+        console.log("Trying alternative approach with FormData");
+        const formData = new FormData();
+        formData.append('invoice_id', invoiceId);
+        
+        const response = await fetch('https://therapy.kidstherapy.me/api/show-invoice', {
+          method: 'POST',
           headers: {
-            Accept: "application/json, text/html",
-            Authorization: `Bearer ${user.api_token}`,
+            'Accept': 'application/json, text/html',
+            'Authorization': `Bearer ${user.api_token}`
           },
-          body: formData,
-        })
-
+          body: formData
+        });
+        
         // Check if the response is HTML
-        const contentType = response.headers.get("content-type")
-        if (contentType && contentType.includes("text/html")) {
-          const htmlContent = await response.text()
-          console.log("Received HTML content from FormData approach")
-          return htmlContent
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('text/html')) {
+          const htmlContent = await response.text();
+          console.log("Received HTML content from FormData approach");
+          return htmlContent;
         }
-
+        
         // If not HTML, try to parse as JSON
-        const data = await response.json()
-        console.log("FormData Response:", JSON.stringify(data, null, 2))
-        return data
+        const data = await response.json();
+        console.log("FormData Response:", JSON.stringify(data, null, 2));
+        return data;
       }
     } catch (error) {
-      console.error("All approaches failed:", error.message)
-      Alert.alert("Error", "Failed to load invoice details. Please try again.")
-      return null
+      console.error("All approaches failed:", error.message);
+      Alert.alert("Error", "Failed to load invoice details. Please try again.");
+      return null;
     }
   }
 
-  // Update the handleViewInvoice function to properly handle HTML content
+  // Update the handleViewInvoice function to better handle the response
   const handleViewInvoice = async (invoiceId) => {
     try {
       // Show loading indicator
@@ -169,10 +167,8 @@ const InvoiceTable = () => {
       setLoading(false)
 
       if (invoiceDetails) {
-        console.log("Navigating to InvoiceDetail with data type:", typeof invoiceDetails)
-
+        console.log("Navigating to InvoiceDetail with data type:", typeof invoiceDetails);
         // Navigate to invoice detail screen with the fetched data
-        // Make sure we're passing the data with the correct parameter name
         navigation.navigate("InvoiceDetail", {
           invoiceId: invoiceId,
           invoiceDetails: invoiceDetails,
@@ -217,13 +213,13 @@ const InvoiceTable = () => {
       <Text style={styles.cell}>{item.total}</Text>
       <View style={styles.actionCell}>
         <TouchableOpacity style={styles.iconButton} onPress={() => handleViewInvoice(item.id)}>
-          <FontAwesome name="eye" size={20} color="#007BFF" />
+          <FontAwesome name="eye" size={15} color="#007BFF" />
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.iconButton, styles.editButton]}
           onPress={() => Alert.alert("Payment", "Payment functionality coming soon!")}
         >
-          <MaterialIcons name="payments" size={20} color="#007BFF" />
+          <MaterialIcons name="payments" size={15} color="#007BFF" />
         </TouchableOpacity>
       </View>
     </View>
@@ -335,9 +331,10 @@ const styles = StyleSheet.create({
   actionCell: {
     flexDirection: "row",
     justifyContent: "center",
+    margin:8,
   },
   iconButton: {
-    padding: 5,
+    padding: 0,
     marginHorizontal: 2,
     borderRadius: 8,
   },
