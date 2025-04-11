@@ -37,7 +37,7 @@ export default function App() {
         <Stack.Screen name="Notification" component={NotificationScreen} options={{ headerShown: false }} />
         <Stack.Screen name="CollectData" component={CollectDataScreen} options={{ headerShown: false }} />
         <Stack.Screen name="InvoiceScreen" component={InvoiceScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="InvoiceDetailScreen" component={InvoiceDetailScreen} options={{ headerShown: false }}/>
+        <Stack.Screen name="InvoiceDetail" component={InvoiceDetailScreen} options={{ headerShown: false }}/>
  </Stack.Navigator>
     </NavigationContainer>
   );

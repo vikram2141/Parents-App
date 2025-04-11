@@ -1,3 +1,5 @@
+"use client"
+
 import { useEffect, useState, useCallback } from "react"
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from "react-native"
 import { useNavigation } from "@react-navigation/native"
@@ -80,7 +82,7 @@ const InvoiceTable = () => {
     }
   }, [getUserData])
 
-  // Function to fetch invoice details - using fetch API instead of axios
+  // Replace the fetchInvoiceDetails function with this improved version
   const fetchInvoiceDetails = async (invoiceId) => {
     try {
       // Get user data to access the API token
@@ -90,65 +92,71 @@ const InvoiceTable = () => {
       }
 
       console.log("Fetching invoice details for ID:", invoiceId)
-      
-      // Use fetch API instead of axios
-      const response = await fetch('https://therapy.kidstherapy.me/api/show-invoice', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.api_token}`
-        },
-        body: JSON.stringify({
-          invoice_id: invoiceId
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Server responded with status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log("Invoice Details Response successful");
-      return data;
-    } catch (error) {
-      console.error("Error fetching invoice details:", error.message);
-      
-      // Try alternative approach with FormData if JSON fails
+
+      // Try to get the raw HTML content first
       try {
-        console.log("Trying alternative approach with FormData");
-        const user = await getUserData();
-        
-        // Create form data
-        const formData = new FormData();
-        formData.append('invoice_id', invoiceId);
-        
-        const response = await fetch('https://therapy.kidstherapy.me/api/show-invoice', {
-          method: 'POST',
+        const response = await fetch("https://therapy.kidstherapy.me/api/show-invoice", {
+          method: "POST",
           headers: {
-            'Accept': 'application/json',
-            'Authorization': `Bearer ${user.api_token}`
-            // Don't set Content-Type for FormData
+            Accept: "application/json, text/html",
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user.api_token}`,
           },
-          body: formData
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Server responded with status: ${response.status}`);
+          body: JSON.stringify({
+            invoice_id: invoiceId,
+          }),
+        })
+
+        // Check if the response is HTML
+        const contentType = response.headers.get("content-type")
+        if (contentType && contentType.includes("text/html")) {
+          const htmlContent = await response.text()
+          console.log("Received HTML content")
+          return htmlContent
         }
-        
-        const data = await response.json();
-        console.log("FormData approach successful");
-        return data;
-      } catch (fallbackError) {
-        console.error("Fallback approach also failed:", fallbackError.message);
-        Alert.alert("Error", "Failed to load invoice details. Please try again.");
-        return null;
+
+        // If not HTML, try to parse as JSON
+        const data = await response.json()
+        console.log("Invoice Details Response:", JSON.stringify(data, null, 2))
+        return data
+      } catch (error) {
+        console.error("First approach failed:", error.message)
+
+        // Try alternative approach with FormData
+        console.log("Trying alternative approach with FormData")
+        const formData = new FormData()
+        formData.append("invoice_id", invoiceId)
+
+        const response = await fetch("https://therapy.kidstherapy.me/api/show-invoice", {
+          method: "POST",
+          headers: {
+            Accept: "application/json, text/html",
+            Authorization: `Bearer ${user.api_token}`,
+          },
+          body: formData,
+        })
+
+        // Check if the response is HTML
+        const contentType = response.headers.get("content-type")
+        if (contentType && contentType.includes("text/html")) {
+          const htmlContent = await response.text()
+          console.log("Received HTML content from FormData approach")
+          return htmlContent
+        }
+
+        // If not HTML, try to parse as JSON
+        const data = await response.json()
+        console.log("FormData Response:", JSON.stringify(data, null, 2))
+        return data
       }
+    } catch (error) {
+      console.error("All approaches failed:", error.message)
+      Alert.alert("Error", "Failed to load invoice details. Please try again.")
+      return null
     }
   }
 
-  // Handle view invoice
+  // Update the handleViewInvoice function to properly handle HTML content
   const handleViewInvoice = async (invoiceId) => {
     try {
       // Show loading indicator
@@ -161,11 +169,16 @@ const InvoiceTable = () => {
       setLoading(false)
 
       if (invoiceDetails) {
+        console.log("Navigating to InvoiceDetail with data type:", typeof invoiceDetails)
+
         // Navigate to invoice detail screen with the fetched data
+        // Make sure we're passing the data with the correct parameter name
         navigation.navigate("InvoiceDetail", {
           invoiceId: invoiceId,
           invoiceDetails: invoiceDetails,
         })
+      } else {
+        Alert.alert("Error", "Could not retrieve invoice details. Please try again.")
       }
     } catch (error) {
       setLoading(false)

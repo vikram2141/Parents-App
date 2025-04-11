@@ -219,12 +219,7 @@ const GoalsListVerify = () => {
             <ActivityIndicator size="large" color="#007BFF" style={styles.loader} />
           ) : (
             <>
-              <TouchableOpacity style={styles.staffSelector} onPress={() => setModalVisible(true)}>
-                <Text style={styles.staffSelectorText}>
-                  {selectedStaff.length > 0 ? `${selectedStaff.length} staff selected` : "Select Staff"}
-                </Text>
-                <Icon name="chevron-down" size={24} color="#007BFF" />
-              </TouchableOpacity>
+             
 
               <View style={styles.selectedStaffContainer}>
                 {selectedStaff.length > 0 ? (
@@ -250,11 +245,7 @@ const GoalsListVerify = () => {
           )}
         </View>
 
-        {/* Add more form fields here as needed */}
-
-        <TouchableOpacity style={styles.saveButton}>
-          <Text style={styles.saveButtonText}>Save</Text>
-        </TouchableOpacity>
+       
       </ScrollView>
 
       {renderStaffSelectionModal()}
