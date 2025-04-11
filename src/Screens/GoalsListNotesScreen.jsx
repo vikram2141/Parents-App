@@ -1,3 +1,5 @@
+"use client"
+
 import React from "react"
 import { useState, useEffect, useRef } from "react"
 import {
@@ -10,6 +12,7 @@ import {
   StatusBar,
   Dimensions,
   Modal,
+  Alert,
 } from "react-native"
 import { LineChart } from "react-native-chart-kit"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
@@ -56,15 +59,40 @@ const GoalsListNotesScreen = ({ route }) => {
       setPagesLists([[], [], []])
       setLabels([])
 
-      // Check if we have valid route params before fetching data
-      if (route?.params?.profileData?.id) {
-        console.log("Found valid appointment ID:", route.params.profileData.id)
-        getGraphData()
-      } else {
-        console.log("No valid appointment ID found, using default data")
-        // Set empty data or mock data for development
-        setTableData([])
+      const loadAppointmentData = async () => {
+        try {
+          // First check if we have data from route params
+          if (route?.params?.profileData?.id) {
+            console.log("Found valid appointment ID in route params:", route.params.profileData.id)
+            getGraphData()
+            return
+          }
+
+          // If not, try to get it from AsyncStorage
+          const storedAppointment = await AsyncStorage.getItem("currentAppointment")
+          if (storedAppointment) {
+            const parsedAppointment = JSON.parse(storedAppointment)
+            console.log("Using appointment data from AsyncStorage, ID:", parsedAppointment.id)
+
+            // Update route.params programmatically to ensure getGraphData works
+            if (route && !route.params) {
+              route.params = { profileData: parsedAppointment }
+            } else if (route) {
+              route.params.profileData = parsedAppointment
+            }
+
+            getGraphData()
+          } else {
+            console.log("No valid appointment ID found, using default data")
+            setTableData([])
+          }
+        } catch (error) {
+          console.error("Error loading appointment data:", error)
+          setTableData([])
+        }
       }
+
+      loadAppointmentData()
 
       return () => {
         isMounted.current = false
@@ -487,7 +515,7 @@ const GoalsListNotesScreen = ({ route }) => {
 
     return (
       <View style={styles.valueControl}>
-       <View
+        <View
           style={[styles.minusButton, item.type === "percentage" && { backgroundColor: "#007AFF" }]}
           onPress={() => {
             if (item.type === "bool" || item.type === "percentage") {
@@ -498,7 +526,7 @@ const GoalsListNotesScreen = ({ route }) => {
           }}
         >
           <Text style={styles.buttonText}>{item.type === "bool" ? "X" : item.type === "percentage" ? "-" : "▶"}</Text>
-          </View>
+        </View>
 
         {item.type === "percentage" && (
           <View style={styles.valueDisplay}>
@@ -512,7 +540,7 @@ const GoalsListNotesScreen = ({ route }) => {
           </View>
         )}
 
-<View 
+        <View
           style={[styles.plusButton, item.type === "percentage" && { backgroundColor: "#007AFF" }]}
           onPress={() => {
             if (item.type === "bool" || item.type === "percentage") {
@@ -525,7 +553,7 @@ const GoalsListNotesScreen = ({ route }) => {
           <Text style={[styles.buttonText, item.type === "timer" ? { color: "black" } : {}]}>
             {item.type === "bool" ? "✔" : item.type === "percentage" ? "+" : "⏸"}
           </Text>
-          </View>
+        </View>
       </View>
     )
   }
@@ -555,12 +583,38 @@ const GoalsListNotesScreen = ({ route }) => {
     navigation.navigate("GoalsListNotes")
   }
 
-  const handleGoalsListDetailScreen = () => {
-    navigation.navigate("GoalsListDetail")
+  const handleGoalsListDetailScreen = async () => {
+    try {
+      // Check if we have profileData from route params
+      if (route?.params?.profileData) {
+        navigation.navigate("GoalsListDetail", { appointment: route.params.profileData })
+      } else {
+        // Try to get data from AsyncStorage
+        const storedAppointment = await AsyncStorage.getItem("currentAppointment")
+        if (storedAppointment) {
+          const parsedAppointment = JSON.parse(storedAppointment)
+          navigation.navigate("GoalsListDetail", { appointment: parsedAppointment })
+        } else {
+          Alert.alert("Error", "No appointment data available")
+        }
+      }
+    } catch (error) {
+      console.error("Error navigating to details:", error)
+      Alert.alert("Error", "Failed to navigate to details screen")
+    }
   }
 
-  const handleGoalsListVerify = () => {
-    navigation.navigate("GoalsListVerify")
+  const handleGoalsListVerify = async () => {
+    try {
+      // Store current appointment data in AsyncStorage before navigating
+      if (route?.params?.profileData) {
+        await AsyncStorage.setItem("currentAppointment", JSON.stringify(route.params.profileData))
+      }
+      navigation.navigate("GoalsListVerify")
+    } catch (error) {
+      console.error("Error navigating to verify:", error)
+      Alert.alert("Error", "Failed to navigate to verify screen")
+    }
   }
 
   const handleLogout = () => {
@@ -577,7 +631,14 @@ const GoalsListNotesScreen = ({ route }) => {
 
     const chartData = graphLists[dataIndex] || []
 
-    const displayData = item.type === "timer" ? chartData.map((val) => val / 100) : chartData
+    // Filter out any NaN, undefined, or null values
+    const cleanedData = chartData.filter(
+      (value) => value !== undefined && value !== null && !isNaN(value) && typeof value === "number",
+    )
+
+    // If we have no valid data points after filtering, provide a default value
+    const displayData =
+      cleanedData.length > 0 ? (item.type === "timer" ? cleanedData.map((val) => val / 100) : cleanedData) : [0] // Default to [0] if no valid data
 
     // Determine the dynamic width based on data points (e.g., 50px per data point)
     const dynamicWidth = Math.max(width, displayData.length * 50)
@@ -589,6 +650,10 @@ const GoalsListNotesScreen = ({ route }) => {
       }
     }, 500)
 
+    // Make sure we have valid labels that match our data length
+    const validLabels =
+      labels.length > 0 ? (labels.length === displayData.length ? labels : Array(displayData.length).fill("")) : ["0"]
+
     return (
       <View style={styles.chartContainer}>
         {displayData.length > 0 ? (
@@ -596,10 +661,10 @@ const GoalsListNotesScreen = ({ route }) => {
             <View>
               <LineChart
                 data={{
-                  labels: labels.length > 0 ? labels : ["0"],
+                  labels: validLabels,
                   datasets: [
                     {
-                      data: displayData.length > 0 ? displayData : [0],
+                      data: displayData,
                       color: () => (item.type === "percentage" ? "#34C759" : "#007AFF"),
                       strokeWidth: 2,
                     },
@@ -1102,4 +1167,3 @@ const styles = StyleSheet.create({
 })
 
 export default GoalsListNotesScreen
-

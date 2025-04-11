@@ -1,9 +1,11 @@
+"use client"
 
 import React, { useState, useEffect } from "react"
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from "react-native"
 import { useNavigation, useFocusEffect } from "@react-navigation/native"
 import axios from "axios"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
+import AsyncStorage from "@react-native-async-storage/async-storage"
 
 const GoalsListDetailScreen = ({ route }) => {
   const [activeTab, setActiveTab] = useState("Details")
@@ -28,25 +30,48 @@ const GoalsListDetailScreen = ({ route }) => {
   // This effect will run every time the screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      console.log("Screen focused, checking data")
+      console.log("Detail Screen focused, checking data")
 
-      // If we already have profileData but it's not the same as the appointment in route.params
-      if (profileData && appointment && profileData.id !== appointment.id) {
-        console.log("Updating profile data from new appointment")
-        setProfileData(appointment)
+      const getAppointmentData = async () => {
+        try {
+          // First check if we have data from route params
+          if (appointment) {
+            console.log("Using appointment data from route params")
+            setProfileData(appointment)
+            setLoading(false)
+            return
+          }
+
+          // If not, try to get it from AsyncStorage
+          const storedAppointment = await AsyncStorage.getItem("currentAppointment")
+          if (storedAppointment) {
+            const parsedAppointment = JSON.parse(storedAppointment)
+            console.log("Using appointment data from AsyncStorage")
+
+            // Get user data to add to the appointment
+            const userData = await AsyncStorage.getItem("userData")
+            if (userData) {
+              parsedAppointment.user = JSON.parse(userData)
+            }
+
+            setProfileData(parsedAppointment)
+            setLoading(false)
+          } else {
+            console.log("No appointment data found")
+            setLoading(false)
+          }
+        } catch (error) {
+          console.error("Error retrieving appointment data:", error)
+          setLoading(false)
+        }
       }
 
-      // If we don't have profileData but we have appointment in route.params
-      if (!profileData && appointment) {
-        console.log("Setting profile data from appointment on focus")
-        setProfileData(appointment)
-        setLoading(false)
-      }
+      getAppointmentData()
 
       return () => {
-       
+        // Cleanup function
       }
-    }, [profileData, appointment]),
+    }, [appointment]),
   )
 
   // Fetch user profile data
@@ -82,13 +107,29 @@ const GoalsListDetailScreen = ({ route }) => {
   }, [appointment])
 
   // Navigate to GoalsListNotes with the correct data
-  const handleGoToNotes = () => {
-    if (profileData) {
-      navigation.navigate("GoalsListNotes", { profileData })
-    } else if (appointment) {
-      navigation.navigate("GoalsListNotes", { profileData: appointment })
-    } else {
-      Alert.alert("Error", "No appointment data available")
+  const handleGoToNotes = async () => {
+    try {
+      if (profileData) {
+        // Store the profile data in AsyncStorage before navigating
+        await AsyncStorage.setItem("currentAppointment", JSON.stringify(profileData))
+        navigation.navigate("GoalsListNotes", { profileData })
+      } else if (appointment) {
+        // Store the appointment data in AsyncStorage before navigating
+        await AsyncStorage.setItem("currentAppointment", JSON.stringify(appointment))
+        navigation.navigate("GoalsListNotes", { profileData: appointment })
+      } else {
+        // Try to get data from AsyncStorage as a last resort
+        const storedAppointment = await AsyncStorage.getItem("currentAppointment")
+        if (storedAppointment) {
+          const parsedAppointment = JSON.parse(storedAppointment)
+          navigation.navigate("GoalsListNotes", { profileData: parsedAppointment })
+        } else {
+          Alert.alert("Error", "No appointment data available")
+        }
+      }
+    } catch (error) {
+      console.error("Error navigating to notes:", error)
+      Alert.alert("Error", "Failed to navigate to notes screen")
     }
   }
 
@@ -132,7 +173,7 @@ const GoalsListDetailScreen = ({ route }) => {
             </View>
             <View style={styles.row}>
               <Text style={styles.label}>Doctor name:</Text>
-              <Text style={styles.value}>{  "Pallavi Nathani"|| "Pallavi Nathani"}</Text>
+              <Text style={styles.value}>{"Pallavi Nathani" || "Pallavi Nathani"}</Text>
             </View>
             <View style={styles.row}>
               <Text style={styles.label}>Therapy:</Text>
@@ -194,12 +235,10 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 22,
     fontWeight: "bold",
-    textAlign:"center",
+    textAlign: "center",
     flex: 1,
-    
   },
-  
- 
+
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -273,4 +312,3 @@ const styles = StyleSheet.create({
   },
 })
 export default GoalsListDetailScreen
-

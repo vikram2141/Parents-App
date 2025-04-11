@@ -31,6 +31,46 @@ const GoalsListVerify = () => {
   const [searchTerm, setSearchTerm] = useState("")
   const navigation = useNavigation()
 
+  // Add this useEffect to store the appointment data when the component mounts
+  useEffect(() => {
+    const getAndStoreAppointmentData = async () => {
+      try {
+        // Check if we already have appointment data in AsyncStorage
+        const existingData = await AsyncStorage.getItem("currentAppointment")
+        if (existingData) {
+          console.log("Using existing appointment data from AsyncStorage")
+          return
+        }
+
+        // If not, try to fetch it from the API
+        const userData = await getUserData()
+        if (!userData || !userData.api_token) {
+          console.error("No user token available")
+          return
+        }
+
+        // Make API call to get the current appointment
+        // This is a placeholder - you'll need to replace with your actual API endpoint
+        const response = await axios.get("https://therapy.kidstherapy.me/api/current-appointment", {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${userData.api_token}`,
+          },
+        })
+
+        if (response.data && response.data.appointment) {
+          // Store the appointment data in AsyncStorage
+          await AsyncStorage.setItem("currentAppointment", JSON.stringify(response.data.appointment))
+          console.log("Stored appointment data in AsyncStorage")
+        }
+      } catch (error) {
+        console.error("Error getting appointment data:", error)
+      }
+    }
+
+    getAndStoreAppointmentData()
+  }, [getUserData])
+
   // Function to get user data from AsyncStorage
   const getUserData = useCallback(async () => {
     try {
@@ -200,10 +240,65 @@ const GoalsListVerify = () => {
       </View>
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.inactiveButton} onPress={() => navigation.navigate("GoalsListDetail")}>
+        <TouchableOpacity
+          style={styles.inactiveButton}
+          onPress={async () => {
+            try {
+              const userData = await AsyncStorage.getItem("userData")
+              if (!userData) {
+                Alert.alert("Error", "User data not found. Please login again.")
+                return
+              }
+
+              const user = JSON.parse(userData)
+
+              // Get the appointment data from AsyncStorage if available
+              const appointmentData = await AsyncStorage.getItem("currentAppointment")
+              if (appointmentData) {
+                const appointment = JSON.parse(appointmentData)
+                // Add the user data to the appointment object
+                appointment.user = user
+                navigation.navigate("GoalsListDetail", { appointment })
+              } else {
+                Alert.alert("Error", "No appointment data found. Please select an appointment from the home screen.")
+              }
+            } catch (error) {
+              console.error("Error navigating to details:", error)
+              Alert.alert("Error", "Failed to navigate to details screen.")
+            }
+          }}
+        >
           <Text style={styles.inactiveText}>Details</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.inactiveButton} onPress={() => navigation.navigate("GoalsListNotes")}>
+
+        <TouchableOpacity
+          style={styles.inactiveButton}
+          onPress={async () => {
+            try {
+              const userData = await AsyncStorage.getItem("userData")
+              if (!userData) {
+                Alert.alert("Error", "User data not found. Please login again.")
+                return
+              }
+
+              const user = JSON.parse(userData)
+
+              // Get the appointment data from AsyncStorage if available
+              const appointmentData = await AsyncStorage.getItem("currentAppointment")
+              if (appointmentData) {
+                const appointment = JSON.parse(appointmentData)
+                // Add the user data to the appointment object
+                appointment.user = user
+                navigation.navigate("GoalsListNotes", { profileData: appointment })
+              } else {
+                Alert.alert("Error", "No appointment data found. Please select an appointment from the home screen.")
+              }
+            } catch (error) {
+              console.error("Error navigating to notes:", error)
+              Alert.alert("Error", "Failed to navigate to notes screen.")
+            }
+          }}
+        >
           <Text style={styles.inactiveText}>Notes</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.activeButton}>
@@ -219,8 +314,6 @@ const GoalsListVerify = () => {
             <ActivityIndicator size="large" color="#007BFF" style={styles.loader} />
           ) : (
             <>
-             
-
               <View style={styles.selectedStaffContainer}>
                 {selectedStaff.length > 0 ? (
                   selectedStaff.map((staffId) => {
@@ -244,8 +337,6 @@ const GoalsListVerify = () => {
             </>
           )}
         </View>
-
-       
       </ScrollView>
 
       {renderStaffSelectionModal()}
@@ -439,4 +530,3 @@ const styles = StyleSheet.create({
 })
 
 export default GoalsListVerify
-
